@@ -30,12 +30,6 @@
             box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
         }
 
-        .chart-container {
-            position: relative;
-            width: 100%;
-            height: 300px;
-        }
-
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
 
@@ -44,6 +38,11 @@
             50% { opacity: 0.7; }
         }
         .animate-pulse-soft { animation: pulse-soft 2s infinite; }
+        
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body class="pb-32">
@@ -65,12 +64,44 @@
                 <button onclick="app.setTab('awards')" data-tab="awards" class="nav-item px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all tracking-widest text-slate-400">Hall of Fame</button>
             </nav>
 
-            <div class="flex items-center gap-4 bg-slate-900 px-4 py-2 rounded-2xl border border-white/10">
-                <span class="text-amber-400">🏆</span>
-                <span id="global-xp" class="text-sm font-black text-indigo-400 tabular-nums">0 XP</span>
+            <div class="flex items-center gap-4">
+                <button onclick="app.showAddModal()" class="bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
+                    + Add Chapter
+                </button>
+                <div class="flex items-center gap-4 bg-slate-900 px-4 py-2 rounded-2xl border border-white/10">
+                    <span class="text-amber-400">🏆</span>
+                    <span id="global-xp" class="text-sm font-black text-indigo-400 tabular-nums">0 XP</span>
+                </div>
             </div>
         </div>
     </header>
+
+    <!-- ADD CHAPTER MODAL -->
+    <div id="add-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center p-4 modal-overlay">
+        <div class="glass w-full max-w-md rounded-[2.5rem] p-8 border-white/10 shadow-2xl">
+            <h2 class="text-xl font-black uppercase tracking-tighter mb-6">Chapter Architect</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-black uppercase text-slate-500 tracking-widest block mb-2">Target Subject</label>
+                    <select id="new-chapter-subject" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500">
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science</option>
+                        <option value="Social Science">Social Science</option>
+                        <option value="English">English</option>
+                        <option value="Hindi">Hindi</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black uppercase text-slate-500 tracking-widest block mb-2">Chapter Title</label>
+                    <input type="text" id="new-chapter-title" placeholder="e.g. Advanced Calculus" class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button onclick="app.hideAddModal()" class="flex-1 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 border border-white/5 hover:bg-white/5">Cancel</button>
+                    <button onclick="app.addNewChapter()" class="flex-1 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 hover:bg-indigo-500 shadow-lg">Construct</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- CONTENT -->
     <main id="app-content" class="max-w-6xl mx-auto p-4 md:p-8">
@@ -90,14 +121,14 @@
               </div>
            </div>
            <div class="text-right">
-              <span class="text-[7px] font-black text-slate-600 uppercase tracking-widest">Progress</span>
+              <span class="text-[7px] font-black text-slate-600 uppercase tracking-widest">Mastery</span>
               <div id="hud-percent" class="text-sm font-black text-indigo-400">0%</div>
            </div>
         </div>
     </div>
 
     <script>
-        const SYLLABUS = {
+        const DEFAULT_SYLLABUS = {
             "Mathematics": ["Number Systems", "Polynomials", "Coordinate Geometry", "Linear Equations", "Lines and Angles", "Triangles", "Quadrilaterals", "Circles", "Heron’s Formula", "Surface Areas", "Statistics"],
             "Science": ["Matter", "Atoms and Molecules", "Structure of Atom", "Unit of Life", "Tissues", "Motion", "Force", "Gravitation", "Work and Energy", "Sound", "Food Resources"],
             "Social Science": ["French Revolution", "Socialism in Europe", "Nazism", "India: Size", "Physical Features", "Drainage", "Climate", "Democracy", "Constitutional Design", "Electoral Politics", "Poverty", "Food Security"],
@@ -115,6 +146,7 @@
         const app = {
             state: {
                 activeTab: 'syllabus',
+                syllabus: JSON.parse(localStorage.getItem('custom_syllabus')) || {...DEFAULT_SYLLABUS},
                 completed: JSON.parse(localStorage.getItem('completed') || '[]'),
                 xp: parseInt(localStorage.getItem('xp') || '0'),
                 todo: JSON.parse(localStorage.getItem('todo') || '[]'),
@@ -131,12 +163,46 @@
             },
 
             save() {
+                localStorage.setItem('custom_syllabus', JSON.stringify(this.state.syllabus));
                 localStorage.setItem('completed', JSON.stringify(this.state.completed));
                 localStorage.setItem('xp', this.state.xp.toString());
                 localStorage.setItem('todo', JSON.stringify(this.state.todo));
                 localStorage.setItem('focusSec', this.state.focusSec.toString());
                 localStorage.setItem('revisions', JSON.stringify(this.state.revisions));
                 this.updateGlobalUI();
+            },
+
+            showAddModal() {
+                document.getElementById('add-modal').classList.remove('hidden');
+                document.getElementById('new-chapter-title').focus();
+            },
+
+            hideAddModal() {
+                document.getElementById('add-modal').classList.add('hidden');
+                document.getElementById('new-chapter-title').value = '';
+            },
+
+            addNewChapter() {
+                const sub = document.getElementById('new-chapter-subject').value;
+                const title = document.getElementById('new-chapter-title').value.trim();
+                
+                if (!title) return;
+
+                if (!this.state.syllabus[sub].includes(title)) {
+                    this.state.syllabus[sub].push(title);
+                    this.state.xp += 20; // Bonus for organizing
+                    this.save();
+                    this.render();
+                    this.hideAddModal();
+                }
+            },
+
+            deleteChapter(sub, ch) {
+                this.state.syllabus[sub] = this.state.syllabus[sub].filter(c => c !== ch);
+                this.state.completed = this.state.completed.filter(c => c !== ch);
+                this.state.todo = this.state.todo.filter(t => t !== ch);
+                this.save();
+                this.render();
             },
 
             setTab(tab) {
@@ -213,8 +279,8 @@
 
             updateGlobalUI() {
                 document.getElementById('global-xp').innerText = `${this.state.xp} XP`;
-                const total = Object.values(SYLLABUS).flat().length;
-                const percent = Math.round((this.state.completed.length / total) * 100);
+                const total = Object.values(this.state.syllabus).flat().length;
+                const percent = total > 0 ? Math.round((this.state.completed.length / total) * 100) : 0;
                 document.getElementById('hud-percent').innerText = `${percent}%`;
             },
 
@@ -226,7 +292,7 @@
                     content.innerHTML = `
                         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
                             <div class="lg:col-span-2 space-y-6">
-                                ${Object.entries(SYLLABUS).map(([sub, chapters]) => `
+                                ${Object.entries(this.state.syllabus).map(([sub, chapters]) => `
                                     <div class="glass rounded-[2rem] overflow-hidden">
                                         <div class="px-6 py-4 bg-white/5 border-b border-white/5 flex justify-between items-center">
                                             <h3 class="text-[10px] font-black uppercase text-indigo-400 tracking-widest">${sub}</h3>
@@ -238,17 +304,22 @@
                                                 const inTodo = this.state.todo.includes(ch);
                                                 return `
                                                     <div class="p-4 rounded-xl border transition-all flex items-center justify-between group ${isDone ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-slate-800/20 border-white/5 hover:border-indigo-500/30'}">
-                                                        <div class="flex items-center gap-3">
+                                                        <div class="flex items-center gap-3 overflow-hidden">
                                                             <button onclick="app.toggleChapter('${ch}')" class="${isDone ? 'text-emerald-500' : 'text-slate-700 hover:text-indigo-500'}">
                                                                 ${isDone ? '✅' : '⭕'}
                                                             </button>
-                                                            <span class="text-[11px] font-bold ${isDone ? 'text-emerald-500/30 line-through' : 'text-slate-300'}">${ch}</span>
+                                                            <span class="text-[11px] font-bold truncate ${isDone ? 'text-emerald-500/30 line-through' : 'text-slate-300'}">${ch}</span>
                                                         </div>
-                                                        ${!isDone ? `
-                                                            <button onclick="app.toggleTodo('${ch}')" class="${inTodo ? 'text-indigo-400' : 'text-slate-800'}">
-                                                                ➕
+                                                        <div class="flex gap-2">
+                                                            ${!isDone ? `
+                                                                <button onclick="app.toggleTodo('${ch}')" title="Add to Queue" class="${inTodo ? 'text-indigo-400' : 'text-slate-700 hover:text-indigo-400'}">
+                                                                    ➕
+                                                                </button>
+                                                            ` : ''}
+                                                            <button onclick="app.deleteChapter('${sub}', '${ch}')" title="Delete" class="text-slate-800 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                🗑️
                                                             </button>
-                                                        ` : ''}
+                                                        </div>
                                                     </div>
                                                 `;
                                             }).join('')}
@@ -345,3 +416,5 @@
     </script>
 </body>
 </html>
+
+
